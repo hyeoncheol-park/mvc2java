@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--  공식 사이트에서  복사 -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+    <!-- namespace 설정 : 중복을 배제시키기 위해서  -->
+ <mapper namespace="com.webjjang.member.mapper.MemberMapper">
+ <!--  id는 mapper 인터페이스와 메서드와 맟춰준다 -->
+ <select id="list" resultType="com.webjjang.member.dto.MemberDTO">
+ select * from (
+ 	select rownum rnum,id,name,gender,birth,tel,state,photo,gradeNo,gradeName
+ 	from(
+ 		select m.id, m.name, m.gender, m.birth, m.tel, m.state,
+ 			m.photo,m.gradeNo, g.gradeName
+ 		from member m,grade g
+ 		
+ 		where 1=1
+ 		<!-- word 프로퍼티가 null 이나 "" 가 아니면 검색을 한다.  -->
+ 		<if test="word != null and word != ''.toString()">
+ 		and (1=0 
+ 		<include refid="searchCondition"/>
+ 		)
+ 		</if>
+ 		and (m.gradeNo=g.gradeNo)
+ 		order by id asc
+ 	)
+ )
+ where rnum between #{startRow} and #{endRow}
+ </select>
+ <select id="getTotalRow" resultType="java.lang.Integer">
+ select count(*)
+ from member
+ 		<if test="word != null and word != ''.toString()">
+ 		where (1=0 
+ 		<include refid="searchCondition"/>
+ 		)
+ 		</if>
+ 		
+ 
+ </select>
+ <!-- 검색에 필요한 조건: 재활용, 복잡함 -->
+ <sql id="searchCondition" >
+ <!-- mybatis에서 문자열이나 문자 데이터는 "'"사용하는데 글자가가 하나인 경우 char로 취급 
+ 그래서 .toString()을 사용해서 문장열로 변환
+ -->
+ <if test="key.toString().indexOf('t') >= 0">
+  or title like  '%' || #{word} || '%' 
+ </if>
+ <if test="key.toString().indexOf('c') >= 0">
+  or content like  '%' || #{word} || '%' 
+ </if>
+ <if test="key.toString().indexOf('w') >= 0">
+  or writer like  '%' || #{word} || '%' 
+ </if>
+ </sql>
+ 
+ <!-- 회원 글스기 처리  -->
+ <insert id="write">
+ insert into member(no,title,content,writer,pw)
+ values(member_seq.nextval,#{title},#{content},#{writer},#{pw})
+ </insert>
+ 
+ <!--  회원 글보기 -->
+ <select id="view" resultType="com.webjjang.member.dto.MemberDTO">
+ select no, title, content,writer,writeDate,hit
+ from member
+ where no = #{no}
+ </select>
+ 
+ <!-- 회원 글보기하면 자동으로 조회수 1증가되도록한다.  -->
+ <update id="increaseHit">
+ update member set hit =hit + 1
+ where no = #{no}
+ </update>
+ 
+ <!-- 회원 글수정:본인이 작성한 글만 수정가능  -->
+ <update id="update">
+ update member
+ set title=#{title},content=#{content},writer=#{writer}
+ where no = #{no} and pw = #{pw}
+ 
+ </update>
+ 
+ <!-- 회원 글삭제  -->
+ <delete id="delete">
+ delete from member
+ where no =#{no} and pw = #{pw}
+ </delete>
+ 
+ <!-- 로그인  -->
+ <select id="login" resultType="com.webjjang.member.dto.LoginDTO">
+ select m.id ,m.name,m.photo,m.newMsgCnt,m.gradeNo,g.gradeName
+ from member m, grade g
+ where (id= #{id} and pw = #{pw})
+  and (m.gradeNo=g.gradeNo)
+ </select>
+ 
+ </mapper>
